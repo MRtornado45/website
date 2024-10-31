@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Chat History Box</title>
+    <!-- 
+    NOTE: This chat application uses a Python/Flask server to store messages:
+    1. The server runs locally on port 3000
+    2. The server stores messages and user accounts in JSON files
+    3. Make sure to run 'python server.py' before using this chat
+    -->
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            margin: 0;
+            padding: 20px;
+            perspective: 1000px;
+        }
+
+        #chatBox, #loginBox, #registerBox {
+            width: 600px;
+            height: 600px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            margin: 20px auto;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.3),
+                        0 0 30px rgba(0,0,0,0.2);
+            transform-style: preserve-3d;
+            transform: rotateX(5deg);
+            transition: transform 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        #chatBox {
+            display: none;
+            overflow-y: scroll;
+            flex-direction: column;
+        }
+
+        #loginBox, #registerBox {
+            height: auto;
+            text-align: center;
+        }
+
+        #registerBox {
+            display: none;
+        }
+
+        .form-input {
+            width: 80%;
+            padding: 15px;
+            margin: 10px auto;
+            display: block;
+            border: none;
+            border-radius: 25px;
+            font-size: 16px;
+            outline: none;
+            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.95);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .form-button {
+            width: 200px;
+            padding: 15px;
+            margin: 10px;
+            border: none;
+            border-radius: 25px;
+            font-size: 16px;
+            cursor: pointer;
+            background: #4CAF50;
+            color: white;
+            transition: all 0.3s ease;
+        }
+
+        .form-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(76,175,80,0.3);
+        }
+
+        .switch-form {
+            color: #4CAF50;
+            cursor: pointer;
+            text-decoration: underline;
+        }
+
+        #chatBox:hover {
+            transform: rotateX(0deg) translateY(-10px);
+        }
+        
+        #messageInput {
+            width: 580px;
+            padding: 15px;
+            margin: 0 auto;
+            display: block;
+            border: none;
+            border-radius: 25px;
+            font-size: 16px;
+            outline: none;
+            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.95);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            transform: translateZ(20px);
+        }
+
+        #messageInput:focus {
+            box-shadow: 0 8px 25px rgba(0,132,255,0.3);
+            transform: translateZ(30px);
+        }
+
+        .message {
+            padding: 12px 18px;
+            border-radius: 20px;
+            margin: 8px 0;
+            max-width: 80%;
+            word-wrap: break-word;
+            animation: messageFloat 0.5s ease;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.3s ease;
+        }
+
+        .message:hover {
+            transform: scale(1.02) translateZ(10px);
+        }
+
+        .message.my-message {
+            margin-left: auto;
+            transform-origin: right center;
+        }
+
+        .message.other-message {
+            margin-right: auto;
+            transform-origin: left center;
+        }
+
+        .message-time {
+            font-size: 12px;
+            color: rgba(102, 102, 102, 0.8);
+            margin-top: 5px;
+            text-align: right;
+            text-shadow: 1px 1px 1px rgba(255,255,255,0.5);
+        }
+
+        @keyframes messageFloat {
+            0% { opacity: 0; transform: translateY(20px) translateZ(-10px); }
+            100% { opacity: 1; transform: translateY(0) translateZ(0); }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px) translateZ(-20px); }
+            to { opacity: 1; transform: translateY(0) translateZ(0); }
+        }
+
+        /* Custom Scrollbar */
+        #chatBox::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        #chatBox::-webkit-scrollbar-track {
+            background: rgba(0,0,0,0.1);
+            border-radius: 4px;
+        }
+
+        #chatBox::-webkit-scrollbar-thumb {
+            background: rgba(0,0,0,0.2);
+            border-radius: 4px;
+            transition: background 0.3s ease;
+        }
+
+        #chatBox::-webkit-scrollbar-thumb:hover {
+            background: rgba(0,0,0,0.3);
+        }
+    </style>
+</head>
+<body>
+    <div id="loginBox">
+        <h2>Login</h2>
+        <input type="text" class="form-input" id="loginUsername" placeholder="Username">
+        <input type="password" class="form-input" id="loginPassword" placeholder="Password">
+        <button class="form-button" onclick="login()">Login</button>
+        <p>Don't have an account? <span class="switch-form" onclick="showRegister()">Register</span></p>
+    </div>
+
+    <div id="registerBox">
+        <h2>Register</h2>
+        <input type="text" class="form-input" id="registerUsername" placeholder="Username">
+        <input type="password" class="form-input" id="registerPassword" placeholder="Password">
+        <input type="password" class="form-input" id="confirmPassword" placeholder="Confirm Password">
+        <button class="form-button" onclick="register()">Register</button>
+        <p>Already have an account? <span class="switch-form" onclick="showLogin()">Login</span></p>
+    </div>
+
+    <div id="chatBox"></div>
+    <input type="text" id="messageInput" placeholder="Type your message..." style="display: none;">
+
+    <script>
+        const chatBox = document.getElementById('chatBox');
+        const messageInput = document.getElementById('messageInput');
+        let userColor = '#' + Math.floor(Math.random()*16777215).toString(16);
+        const SERVER_URL = 'http://localhost:3000';
+        let currentUser = null;
+
+        function showLogin() {
+            document.getElementById('loginBox').style.display = 'block';
+            document.getElementById('registerBox').style.display = 'none';
+        }
+
+        function showRegister() {
+            document.getElementById('loginBox').style.display = 'none';
+            document.getElementById('registerBox').style.display = 'block';
+        }
+
+        function showChat() {
+            document.getElementById('loginBox').style.display = 'none';
+            document.getElementById('registerBox').style.display = 'none';
+            chatBox.style.display = 'flex';
+            messageInput.style.display = 'block';
+        }
+
+        async function login() {
+            const username = document.getElementById('loginUsername').value;
+            const password = document.getElementById('loginPassword').value;
+
+            if (!username || !password) {
+                alert('Please fill in all fields');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${SERVER_URL}/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        username: username,
+                        password: password
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    currentUser = username;
+                    showChat();
+                    loadChatHistory();
+                } else {
+                    alert(data.error || 'Login failed');
+                }
+            } catch (error) {
+                console.error('Error during login:', error);
+                alert('Login failed. Make sure the server is running!');
+            }
+        }
+
+        async function register() {
+            const username = document.getElementById('registerUsername').value;
+            const password = document.getElementById('registerPassword').value;
+            const confirmPass = document.getElementById('confirmPassword').value;
+
+            if (!username || !password || !confirmPass) {
+                alert('Please fill in all fields');
+                return;
+            }
+
+            if (password !== confirmPass) {
+                alert('Passwords do not match');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${SERVER_URL}/register`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        username: username,
+                        password: password
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    currentUser = username;
+                    showChat();
+                    loadChatHistory();
+                } else {
+                    alert(data.error || 'Registration failed');
+                }
+            } catch (error) {
+                console.error('Error during registration:', error);
+                alert('Registration failed. Make sure the server is running!');
+            }
+        }
+
+        // Add 3D parallax effect on mouse move
+        document.addEventListener('mousemove', (e) => {
+            const xAxis = (window.innerWidth / 2 - e.pageX) / 50;
+            const yAxis = (window.innerHeight / 2 - e.pageY) / 50;
+            chatBox.style.transform = `rotateX(${yAxis}deg) rotateY(${xAxis}deg)`;
+        });
+
+        // Reset transform on mouse leave
+        chatBox.addEventListener('mouseleave', () => {
+            chatBox.style.transform = 'rotateX(5deg)';
+        });
+
+        messageInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && this.value.trim() !== '') {
+                const messageObj = {
+                    text: this.value,
+                    color: userColor,
+                    timestamp: new Date().toISOString(),
+                    isMyMessage: true,
+                    username: currentUser
+                };
+                
+                saveMessage(messageObj);
+                displayMessage(messageObj);
+                
+                this.value = '';
+            }
+        });
+
+        function displayMessage(messageObj) {
+            const existingMessages = document.querySelectorAll('.message-time');
+            for (let msg of existingMessages) {
+                if (msg.dataset.timestamp === messageObj.timestamp) {
+                    return;
+                }
+            }
+            
+            const messageContainer = document.createElement('div');
+            messageContainer.className = 'message ' + (messageObj.isMyMessage ? 'my-message' : 'other-message');
+            messageContainer.style.backgroundColor = messageObj.color;
+            messageContainer.style.color = getContrastColor(messageObj.color);
+            
+            const messageText = document.createElement('div');
+            messageText.textContent = `${messageObj.username}: ${messageObj.text}`;
+            
+            const messageTime = document.createElement('div');
+            messageTime.className = 'message-time';
+            messageTime.textContent = new Date(messageObj.timestamp).toLocaleTimeString();
+            messageTime.dataset.timestamp = messageObj.timestamp;
+            
+            messageContainer.appendChild(messageText);
+            messageContainer.appendChild(messageTime);
+            
+            chatBox.appendChild(messageContainer);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        async function saveMessage(messageObj) {
+            try {
+                const response = await fetch(`${SERVER_URL}/saveMessage`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        text: messageObj.text,
+                        color: messageObj.color,
+                        timestamp: messageObj.timestamp,
+                        username: messageObj.username
+                    })
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to save message');
+                }
+            } catch (error) {
+                console.error('Error saving message:', error);
+            }
+        }
+
+        async function loadChatHistory() {
+            try {
+                const response = await fetch(`${SERVER_URL}/getMessages`);
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to load messages');
+                }
+                
+                const messages = await response.json();
+                messages.forEach(messageObj => {
+                    messageObj.isMyMessage = messageObj.username === currentUser;
+                    displayMessage(messageObj);
+                });
+            } catch (error) {
+                console.error('Error loading chat history:', error);
+                console.log('Make sure the Python server is running');
+            }
+        }
+
+        function getContrastColor(hexcolor) {
+            const r = parseInt(hexcolor.substr(1,2),16);
+            const g = parseInt(hexcolor.substr(3,2),16);
+            const b = parseInt(hexcolor.substr(5,2),16);
+            const yiq = ((r*299)+(g*587)+(b*114))/1000;
+            return (yiq >= 128) ? 'black' : 'white';
+        }
+    </script>
+</body>
+</html>
